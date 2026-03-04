@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="健康記録">
+<title>健康ダッシュボード</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    min-height: 100vh;
+    background: #f8f4ec;
+    font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
+    color: #3a3228;
+    padding-bottom: 40px;
+  }
+  .header {
+    padding: 20px 18px 14px;
+    border-bottom: 1px solid #e0d8c8;
+    background: linear-gradient(180deg, #ede8dc 0%, #f8f4ec 100%);
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .header-title { font-size: 19px; font-weight: 800; color: #7c5c3a; letter-spacing: 1px; }
+  .header-sub { font-size: 12px; color: #9c8878; margin-top: 3px; }
+  .header-count { text-align: right; }
+  .header-count-num { font-size: 22px; font-weight: 700; color: #b07040; }
+  .header-count-label { font-size: 11px; color: #9c8878; }
+
+  .tabs { display: flex; border-bottom: 1px solid #e0d8c8; background: #ede8dc; }
+  .tab-btn {
+    flex: 1; background: none; border: none; padding: 13px 4px;
+    color: #9c8878; border-bottom: 2px solid transparent;
+    cursor: pointer; font-size: 13px; font-weight: 400;
+    font-family: inherit;
+  }
+  .tab-btn.active { color: #7c5c3a; border-bottom: 2px solid #b07040; font-weight: 700; }
+
+  .content { padding: 18px 18px 20px; max-width: 520px; margin: 0 auto; }
+
+  .card {
+    background: #fffdf7; border-radius: 16px; box-shadow: 0 1px 4px #c8b89820;
+    padding: 16px 18px; margin-bottom: 14px;
+  }
+  .card-label {
+    font-size: 13px; font-weight: 700; letter-spacing: 0.5px;
+    margin-bottom: 10px; display: block;
+  }
+
+  input[type=number], input[type=text], textarea {
+    background: #fff9f0; border: 1px solid #ddd0be; border-radius: 8px;
+    color: #3a3228; padding: 9px 12px; font-size: 16px; outline: none;
+    font-family: inherit;
+  }
+  input[type=number]:focus, input[type=text]:focus, textarea:focus {
+    border-color: #b07040;
+  }
+  .num-input { width: 82px; text-align: center; font-size: 18px; font-weight: 700; }
+  .weight-input { width: 120px; font-size: 22px; font-weight: 700; text-align: center; }
+  .sleep-input { width: 110px; font-size: 22px; font-weight: 700; text-align: center; }
+  textarea { width: 100%; resize: vertical; line-height: 1.6; }
+
+  .row { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; }
+  .small-label { font-size: 11px; color: #5a4535; font-weight: 600; margin-bottom: 4px; text-align: center; }
+  .unit-text { font-size: 11px; color: #9c8878; padding-bottom: 10px; }
+  .hint-text { font-size: 11px; color: #9c8878; }
+
+  .toggle-row { display: flex; gap: 8px; margin-top: 4px; }
+  .toggle-btn {
+    flex: 1; padding: 10px; border-radius: 10px; border: 1px solid #e0d0bc;
+    cursor: pointer; font-size: 14px; font-weight: 700;
+    background: #f0e8d8; color: #9c8878;
+    font-family: inherit; transition: all 0.15s;
+  }
+  .toggle-btn.active-true { background: #22c55e33; color: #4ade80; outline: 1.5px solid #4ade80; border-color: transparent; }
+  .toggle-btn.active-false { background: #ef444433; color: #f87171; outline: 1.5px solid #f87171; border-color: transparent; }
+
+  .bp-switch { display: flex; gap: 4px; }
+  .bp-switch-btn {
+    padding: 5px 14px; border-radius: 20px; border: 1px solid #e0d0bc;
+    cursor: pointer; font-size: 12px; font-weight: 700;
+    background: #f0e8d8; color: #9c8878; font-family: inherit;
+  }
+  .bp-switch-btn.active { background: #f472b622; color: #c4527a; outline: 1.5px solid #e06090; border-color: transparent; }
+  .bp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .bp-subtitle { font-size: 12px; color: #5a4535; font-weight: 600; margin-bottom: 10px; }
+  .bp-status { font-size: 12px; margin-top: 8px; }
+
+  .save-btn {
+    width: 100%; padding: 16px;
+    background: linear-gradient(90deg, #b07040, #d4944a);
+    border: none; border-radius: 14px; color: #fff;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 4px 24px #b0704433; letter-spacing: 1px;
+    font-family: inherit;
+  }
+  .save-btn.saved { background: #22c55e22; border: 1.5px solid #4ade80; color: #3a8a5a; box-shadow: none; }
+  .save-hint { font-size: 11px; color: #9c8878; text-align: center; margin-top: 8px; }
+
+  .range-selector { display: flex; gap: 8px; margin-bottom: 16px; }
+  .range-btn {
+    flex: 1; padding: 8px; border-radius: 8px; border: none; cursor: pointer;
+    background: #f0e8d8; color: #9c8878;
+    font-size: 13px; font-weight: 600; font-family: inherit;
+  }
+  .range-btn.active { background: #b0704022; color: #b07040; outline: 1px solid #b07040; }
+
+  .chart-card { background: #fffdf7; border: 1px solid #e0d0bc; border-radius: 16px; box-shadow: 0 1px 4px #c8b89820; padding: 16px 18px; margin-bottom: 20px; }
+  .chart-title { font-size: 13px; font-weight: 700; color: #7c6858; margin-bottom: 12px; }
+  .chart-wrap { position: relative; height: 160px; }
+  .chart-wrap-tall { position: relative; height: 200px; }
+  .chart-empty { color: #9c8878; font-size: 13px; text-align: center; padding: 20px 0; }
+
+  .stat-row { display: flex; gap: 10px; }
+  .stat-card { background: #fffdf7; border: 1px solid #e0d0bc; border-radius: 16px; box-shadow: 0 1px 4px #c8b89820; padding: 12px 16px; flex: 1; text-align: center; }
+  .stat-label { font-size: 11px; color: #9c8878; margin-bottom: 6px; }
+  .stat-value { font-size: 28px; font-weight: 800; }
+
+  .history-card { background: #fffdf7; border: 1px solid #e0d0bc; border-radius: 14px; padding: 12px 16px; margin-bottom: 12px; }
+  .history-date-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .history-date { font-size: 13px; font-weight: 700; color: #7c5c3a; }
+  .del-btn { background: #ef444420; border: 1px solid #ef444440; border-radius: 6px; color: #f87171; padding: 3px 10px; font-size: 11px; cursor: pointer; font-family: inherit; }
+  .history-items { display: flex; flex-direction: column; gap: 5px; font-size: 13px; }
+  .history-flags { display: flex; gap: 12px; }
+  .history-memo { margin-top: 6px; font-size: 12px; color: #9c8878; border-top: 1px solid #e0d0bc; padding-top: 6px; }
+
+  .report-box { background: #fffdf7; border: 1px solid #e0d0bc; border-radius: 16px; box-shadow: 0 1px 4px #c8b89820; padding: 16px 18px; margin-bottom: 14px; }
+  .report-label { font-size: 12px; color: #9c8878; margin-bottom: 10px; }
+  .report-text { white-space: pre-wrap; font-size: 13px; line-height: 1.8; color: #3a3228; font-family: inherit; }
+  .copy-btn {
+    width: 100%; padding: 14px;
+    background: linear-gradient(90deg, #b07040, #d4944a);
+    border: none; border-radius: 12px; color: #fff;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 4px 20px #0ea5e944; font-family: inherit;
+  }
+  .copy-hint { font-size: 12px; color: #9c8878; text-align: center; margin-top: 8px; }
+
+  .empty-msg { text-align: center; color: #9c8878; padding: 50px 0; }
+  .tab-section { display: none; }
+  .tab-section.active { display: block; }
+
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #9c8878; }
+  .legend-dot { width: 10px; height: 3px; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-title">🩺 健康ダッシュボード</div>
+    <div class="header-sub" id="todayLabel"></div>
+  </div>
+  <div class="header-count">
+    <div class="header-count-label">記録数</div>
+    <div class="header-count-num"><span id="recordCount">0</span> <span style="font-size:12px;color:#9c8878">日</span></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab(0)">今日</button>
+  <button class="tab-btn" onclick="switchTab(1)">グラフ</button>
+  <button class="tab-btn" onclick="switchTab(2)">履歴</button>
+  <button class="tab-btn" onclick="switchTab(3)">レポート</button>
+</div>
+
+<!-- 今日タブ -->
+<div class="content tab-section active" id="tab0">
+
+  <!-- 体重 -->
+  <div class="card" style="border-color:#b0956833">
+    <span class="card-label" style="color:#b07040">⚖️ 体重</span>
+    <div class="row">
+      <input type="number" class="weight-input" id="weight" step="0.05" placeholder="65.00" oninput="markUnsaved()">
+      <span style="color:#9c8878;font-size:14px">kg</span>
+    </div>
+  </div>
+
+  <!-- 血圧 -->
+  <div class="card" style="border-color:#e0606033">
+    <div class="bp-header">
+      <span class="card-label" style="color:#c45070;margin-bottom:0">🩸 血圧・脈拍</span>
+      <div class="bp-switch">
+        <button class="bp-switch-btn active" id="bpAmBtn" onclick="switchBp('am')">🌅 朝</button>
+        <button class="bp-switch-btn" id="bpPmBtn" onclick="switchBp('pm')">🌙 夜</button>
+      </div>
+    </div>
+    <div id="bpAmSection">
+      <div class="bp-subtitle">🌅 朝の血圧（起床後）</div>
+      <div class="row">
+        <div class="col"><div class="small-label">収縮期</div><input type="number" class="num-input" id="amSys" placeholder="120" oninput="markUnsaved();updateBpStatus()"></div>
+        <div style="color:#9c8878;font-size:20px;padding-bottom:10px">/</div>
+        <div class="col"><div class="small-label">拡張期</div><input type="number" class="num-input" id="amDia" placeholder="80" oninput="markUnsaved();updateBpStatus()"></div>
+        <div class="col"><div class="small-label">脈拍</div><input type="number" class="num-input" id="amPulse" placeholder="72" oninput="markUnsaved()"></div>
+        <span class="unit-text">mmHg / bpm</span>
+      </div>
+      <div class="bp-status" id="bpAmStatus"></div>
+    </div>
+    <div id="bpPmSection" style="display:none">
+      <div class="bp-subtitle">🌙 夜の血圧（就寝前）</div>
+      <div class="row">
+        <div class="col"><div class="small-label">収縮期</div><input type="number" class="num-input" id="pmSys" placeholder="120" oninput="markUnsaved();updateBpStatus()"></div>
+        <div style="color:#9c8878;font-size:20px;padding-bottom:10px">/</div>
+        <div class="col"><div class="small-label">拡張期</div><input type="number" class="num-input" id="pmDia" placeholder="80" oninput="markUnsaved();updateBpStatus()"></div>
+        <div class="col"><div class="small-label">脈拍</div><input type="number" class="num-input" id="pmPulse" placeholder="72" oninput="markUnsaved()"></div>
+        <span class="unit-text">mmHg / bpm</span>
+      </div>
+      <div class="bp-status" id="bpPmStatus"></div>
+    </div>
+  </div>
+
+  <!-- 睡眠 -->
+  <div class="card" style="border-color:#9878d033">
+    <span class="card-label" style="color:#7858b0">😴 睡眠時間</span>
+    <div class="row">
+      <input type="number" class="sleep-input" id="sleep" step="0.5" placeholder="7.0" oninput="markUnsaved()">
+      <span style="color:#9c8878;font-size:14px">時間</span>
+    </div>
+  </div>
+
+  <!-- 昼間の眠気 -->
+  <div class="card" style="border-color:#d08040">
+    <span class="card-label" style="color:#c07030">😪 昼間の眠気</span>
+    <div class="toggle-row">
+      <button class="toggle-btn" id="sleepyTrue" onclick="setToggle('sleepy', true)">😴 あった</button>
+      <button class="toggle-btn" id="sleepyFalse" onclick="setToggle('sleepy', false)">😊 なかった</button>
+    </div>
+  </div>
+
+  <!-- CPAP -->
+  <div class="card" style="border-color:#40a87833">
+    <span class="card-label" style="color:#2a8860">💨 CPAP使用（昨晩）</span>
+    <div class="toggle-row">
+      <button class="toggle-btn" id="cpapTrue" onclick="setToggle('cpap', true)">✅ 使用した</button>
+      <button class="toggle-btn" id="cpapFalse" onclick="setToggle('cpap', false)">❌ 使用しなかった</button>
+    </div>
+  </div>
+
+  <!-- 服薬 -->
+  <div class="card" style="border-color:#d09030">
+    <span class="card-label" style="color:#a07010">💊 服薬（昨晩）</span>
+    <div class="toggle-row">
+      <button class="toggle-btn" id="medsTrue" onclick="setToggle('meds', true)">✅ 飲んだ</button>
+      <button class="toggle-btn" id="medsFalse" onclick="setToggle('meds', false)">❌ 飲まなかった</button>
+    </div>
+  </div>
+
+  <!-- 体調メモ -->
+  <div class="card" style="border-color:#b0a09033">
+    <span class="card-label" style="color:#7c6858">📝 体調メモ</span>
+    <textarea id="memo" rows="3" placeholder="今日の体調・気になること・医師への相談事項など…" oninput="markUnsaved()"></textarea>
+  </div>
+
+  <button class="save-btn" id="saveBtn" onclick="saveRecord()">今日の記録を保存する</button>
+  <div class="save-hint">朝と夜、両方入力してから保存するとより正確な記録になります</div>
+</div>
+
+<!-- グラフタブ -->
+<div class="content tab-section" id="tab1">
+  <div class="range-selector">
+    <button class="range-btn active" id="range7" onclick="setRange(7)">直近7日</button>
+    <button class="range-btn" id="range14" onclick="setRange(14)">直近14日</button>
+    <button class="range-btn" id="range30" onclick="setRange(30)">直近30日</button>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">⚖️ 体重</div>
+    <div class="chart-wrap" id="weightChartWrap"><div class="chart-empty" id="weightChartEmpty">データが2日分以上必要です</div><canvas id="weightChart" style="display:none"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">🩸 血圧（朝・夜）</div>
+    <div class="chart-wrap-tall" id="bpChartWrap"><div class="chart-empty" id="bpChartEmpty">データが2日分以上必要です</div><canvas id="bpChart" style="display:none"></canvas></div>
+    <div class="chart-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#f472b6"></div>朝収縮期</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fb7185;border-top:2px dashed #fb7185;height:0"></div>朝拡張期</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#818cf8"></div>夜収縮期</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>夜拡張期</div>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">😴 睡眠時間</div>
+    <div class="chart-wrap" id="sleepChartWrap"><div class="chart-empty" id="sleepChartEmpty">データが2日分以上必要です</div><canvas id="sleepChart" style="display:none"></canvas></div>
+  </div>
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-label">💨 CPAP使用率</div>
+      <div class="stat-value" id="cpapRate" style="color:#2a8860">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">💊 服薬遵守率</div>
+      <div class="stat-value" id="medRate" style="color:#a07010">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- 履歴タブ -->
+<div class="content tab-section" id="tab2">
+  <div id="historyList"><div class="empty-msg">まだ記録がありません</div></div>
+</div>
+
+<!-- レポートタブ -->
+<div class="content tab-section" id="tab3">
+  <div class="range-selector">
+    <button class="range-btn active" id="repRange7" onclick="setRange(7)">直近7日</button>
+    <button class="range-btn" id="repRange14" onclick="setRange(14)">直近14日</button>
+    <button class="range-btn" id="repRange30" onclick="setRange(30)">直近30日</button>
+  </div>
+  <div class="report-box">
+    <div class="report-label">📋 医師への報告用サマリー</div>
+    <pre class="report-text" id="reportText"></pre>
+  </div>
+  <button class="copy-btn" onclick="copyReport()">📋 レポートをコピーする</button>
+  <div class="copy-hint">診察時にメモアプリに貼り付けてご利用ください</div>
+</div>
+
+<script>
+  let records = [];
+  let toggleState = { sleepy: null, cpap: null, meds: null };
+  let reportRange = 7;
+  let currentBpView = 'am';
+  let charts = {};
+
+  const STORAGE_KEY = 'healthDashboard_v1';
+
+  function getTodayStr() {
+    return new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit' });
+  }
+  function getTimeStr() {
+    return new Date().toLocaleTimeString('ja-JP', { hour:'2-digit', minute:'2-digit' });
+  }
+
+  function saveToStorage() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); } catch(e) {}
+  }
+  function loadFromStorage() {
+    try {
+      const d = localStorage.getItem(STORAGE_KEY);
+      if (d) records = JSON.parse(d);
+    } catch(e) {}
+  }
+
+  function init() {
+    loadFromStorage();
+    document.getElementById('todayLabel').textContent = getTodayStr() + '　毎日の記録で、健康を守る';
+    updateRecordCount();
+    loadTodayEntry();
+    updateBpStatus();
+  }
+
+  function loadTodayEntry() {
+    const today = getTodayStr();
+    const r = records.find(r => r.date === today);
+    if (!r) return;
+    document.getElementById('weight').value = r.weight || '';
+    document.getElementById('amSys').value = r.amSys || '';
+    document.getElementById('amDia').value = r.amDia || '';
+    document.getElementById('amPulse').value = r.amPulse || '';
+    document.getElementById('pmSys').value = r.pmSys || '';
+    document.getElementById('pmDia').value = r.pmDia || '';
+    document.getElementById('pmPulse').value = r.pmPulse || '';
+    document.getElementById('sleep').value = r.sleep || '';
+    document.getElementById('memo').value = r.memo || '';
+    toggleState.sleepy = r.sleepy;
+    toggleState.cpap = r.cpap;
+    toggleState.meds = r.meds;
+    refreshToggles();
+    const btn = document.getElementById('saveBtn');
+    btn.textContent = `✓ 保存済み（${r.savedAt}）`;
+    btn.className = 'save-btn saved';
+    updateBpStatus();
+  }
+
+  function markUnsaved() {
+    const btn = document.getElementById('saveBtn');
+    btn.textContent = '今日の記録を保存する';
+    btn.className = 'save-btn';
+  }
+
+  function setToggle(field, value) {
+    toggleState[field] = value;
+    refreshToggles();
+    markUnsaved();
+  }
+
+  function refreshToggles() {
+    ['sleepy','cpap','meds'].forEach(field => {
+      const v = toggleState[field];
+      const tBtn = document.getElementById(field + 'True');
+      const fBtn = document.getElementById(field + 'False');
+      if (!tBtn || !fBtn) return;
+      tBtn.className = 'toggle-btn' + (v === true ? ' active-true' : '');
+      fBtn.className = 'toggle-btn' + (v === false ? ' active-false' : '');
+    });
+  }
+
+  function switchBp(view) {
+    currentBpView = view;
+    document.getElementById('bpAmSection').style.display = view === 'am' ? 'block' : 'none';
+    document.getElementById('bpPmSection').style.display = view === 'pm' ? 'block' : 'none';
+    document.getElementById('bpAmBtn').className = 'bp-switch-btn' + (view === 'am' ? ' active' : '');
+    document.getElementById('bpPmBtn').className = 'bp-switch-btn' + (view === 'pm' ? ' active' : '');
+    updateBpStatus();
+  }
+
+  function updateBpStatus() {
+    const amSys = document.getElementById('amSys').value;
+    const amDia = document.getElementById('amDia').value;
+    const amPulse = document.getElementById('amPulse').value;
+    const pmSys = document.getElementById('pmSys').value;
+    const pmDia = document.getElementById('pmDia').value;
+    const pmPulse = document.getElementById('pmPulse').value;
+
+    const amStatus = document.getElementById('bpAmStatus');
+    const pmStatus = document.getElementById('bpPmStatus');
+
+    if (amStatus) {
+      let html = '';
+      if (amSys) html += `<span style="color:#2a8a50">✓ 朝 ${amSys}/${amDia} mmHg 脈${amPulse}</span>`;
+      if (pmSys) html += `<span style="color:#94a3b8;margin-left:12px">夜 ${pmSys}/${pmDia} mmHg 脈${pmPulse}</span>`;
+      amStatus.innerHTML = html;
+    }
+    if (pmStatus) {
+      let html = '';
+      if (pmSys) html += `<span style="color:#2a8a50">✓ 夜 ${pmSys}/${pmDia} mmHg 脈${pmPulse}</span>`;
+      if (amSys) html += `<span style="color:#94a3b8;margin-left:12px">朝 ${amSys}/${amDia} mmHg 脈${amPulse}</span>`;
+      pmStatus.innerHTML = html;
+    }
+  }
+
+  function saveRecord() {
+    const today = getTodayStr();
+    const entry = {
+      date: today,
+      weight: document.getElementById('weight').value,
+      amSys: document.getElementById('amSys').value,
+      amDia: document.getElementById('amDia').value,
+      amPulse: document.getElementById('amPulse').value,
+      pmSys: document.getElementById('pmSys').value,
+      pmDia: document.getElementById('pmDia').value,
+      pmPulse: document.getElementById('pmPulse').value,
+      sleep: document.getElementById('sleep').value,
+      sleepy: toggleState.sleepy,
+      cpap: toggleState.cpap,
+      meds: toggleState.meds,
+      memo: document.getElementById('memo').value,
+      savedAt: getTimeStr(),
+    };
+    records = records.filter(r => r.date !== today);
+    records.push(entry);
+    records.sort((a, b) => a.date.localeCompare(b.date));
+    saveToStorage();
+    updateRecordCount();
+    const btn = document.getElementById('saveBtn');
+    btn.textContent = `✓ 保存済み（${entry.savedAt}）`;
+    btn.className = 'save-btn saved';
+  }
+
+  function deleteRecord(date) {
+    if (!confirm(`${date} の記録を削除しますか？`)) return;
+    records = records.filter(r => r.date !== date);
+    saveToStorage();
+    updateRecordCount();
+    renderHistory();
+  }
+
+  function updateRecordCount() {
+    document.getElementById('recordCount').textContent = records.length;
+  }
+
+  function switchTab(idx) {
+    document.querySelectorAll('.tab-section').forEach((s,i) => s.classList.toggle('active', i === idx));
+    document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', i === idx));
+    if (idx === 1) { setTimeout(renderCharts, 50); renderStats(); }
+    if (idx === 2) renderHistory();
+    if (idx === 3) renderReport();
+  }
+
+  function setRange(n) {
+    reportRange = n;
+    [7,14,30].forEach(r => {
+      const b1 = document.getElementById('range'+r);
+      const b2 = document.getElementById('repRange'+r);
+      if(b1) b1.className = 'range-btn' + (r === n ? ' active' : '');
+      if(b2) b2.className = 'range-btn' + (r === n ? ' active' : '');
+    });
+    renderCharts();
+    renderStats();
+    renderReport();
+  }
+
+  const chartDefaults = {
+    plugins: { legend: { display: false }, tooltip: {
+      backgroundColor: '#fffdf7', borderColor: '#e0d0bc', borderWidth: 1,
+      titleColor: '#7c5c3a', bodyColor: '#3a3228',
+    }},
+    scales: {
+      x: { ticks: { color: '#9c8878', font: { size: 10 } }, grid: { color: '#e0d0bc' } },
+      y: { ticks: { color: '#9c8878', font: { size: 10 } }, grid: { color: '#e0d0bc' } },
+    },
+    animation: false,
+    responsive: true, maintainAspectRatio: false,
+  };
+
+  function renderCharts() {
+    const recent = records.slice(-reportRange);
+
+    // 体重
+    const wData = recent.filter(r => r.weight);
+    const wEl = document.getElementById('weightChart');
+    const wEmpty = document.getElementById('weightChartEmpty');
+    if (wData.length < 2) {
+      wEl.style.display = 'none'; wEmpty.style.display = 'block';
+    } else {
+      wEl.style.display = 'block'; wEmpty.style.display = 'none';
+      if (charts.weight) charts.weight.destroy();
+      charts.weight = new Chart(wEl, {
+        type: 'line',
+        data: {
+          labels: wData.map(r => r.date.slice(5)),
+          datasets: [{ data: wData.map(r => parseFloat(r.weight)), borderColor: '#38bdf8', backgroundColor: '#38bdf820', borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 5, tension: 0.3 }]
+        },
+        options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, ticks: { ...chartDefaults.scales.y.ticks, callback: v => v+'kg' } } } }
+      });
+    }
+
+    // 血圧
+    const bpData = recent.filter(r => r.amSys || r.pmSys);
+    const bpEl = document.getElementById('bpChart');
+    const bpEmpty = document.getElementById('bpChartEmpty');
+    if (bpData.length < 2) {
+      bpEl.style.display = 'none'; bpEmpty.style.display = 'block';
+    } else {
+      bpEl.style.display = 'block'; bpEmpty.style.display = 'none';
+      if (charts.bp) charts.bp.destroy();
+      charts.bp = new Chart(bpEl, {
+        type: 'line',
+        data: {
+          labels: bpData.map(r => r.date.slice(5)),
+          datasets: [
+            { label:'朝収縮期', data: bpData.map(r => r.amSys ? parseInt(r.amSys) : null), borderColor:'#f472b6', borderWidth:2, pointRadius:3, tension:0.3, spanGaps:true },
+            { label:'朝拡張期', data: bpData.map(r => r.amDia ? parseInt(r.amDia) : null), borderColor:'#fb7185', borderWidth:1.5, borderDash:[4,2], pointRadius:2, tension:0.3, spanGaps:true },
+            { label:'夜収縮期', data: bpData.map(r => r.pmSys ? parseInt(r.pmSys) : null), borderColor:'#818cf8', borderWidth:2, pointRadius:3, tension:0.3, spanGaps:true },
+            { label:'夜拡張期', data: bpData.map(r => r.pmDia ? parseInt(r.pmDia) : null), borderColor:'#a78bfa', borderWidth:1.5, borderDash:[4,2], pointRadius:2, tension:0.3, spanGaps:true },
+          ]
+        },
+        options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } }
+      });
+    }
+
+    // 睡眠
+    const slData = recent.filter(r => r.sleep);
+    const slEl = document.getElementById('sleepChart');
+    const slEmpty = document.getElementById('sleepChartEmpty');
+    if (slData.length < 2) {
+      slEl.style.display = 'none'; slEmpty.style.display = 'block';
+    } else {
+      slEl.style.display = 'block'; slEmpty.style.display = 'none';
+      if (charts.sleep) charts.sleep.destroy();
+      charts.sleep = new Chart(slEl, {
+        type: 'line',
+        data: {
+          labels: slData.map(r => r.date.slice(5)),
+          datasets: [{ data: slData.map(r => parseFloat(r.sleep)), borderColor:'#a78bfa', backgroundColor:'#a78bfa20', borderWidth:2.5, pointRadius:3, pointHoverRadius:5, tension:0.3 }]
+        },
+        options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, ticks: { ...chartDefaults.scales.y.ticks, callback: v => v+'h' } } } }
+      });
+    }
+  }
+
+  function renderStats() {
+    const recent = records.slice(-reportRange);
+    const cpapDays = recent.filter(r => r.cpap === true).length;
+    const medDays = recent.filter(r => r.meds === true).length;
+    const cpapRate = recent.length > 0 ? Math.round(cpapDays / recent.length * 100) : null;
+    const medRate = recent.length > 0 ? Math.round(medDays / recent.length * 100) : null;
+    const cpapEl = document.getElementById('cpapRate');
+    const medEl = document.getElementById('medRate');
+    cpapEl.textContent = cpapRate !== null ? cpapRate + '%' : '—';
+    cpapEl.style.color = cpapRate !== null ? (cpapRate >= 80 ? '#34d399' : '#f87171') : '#4a7a9b';
+    medEl.textContent = medRate !== null ? medRate + '%' : '—';
+    medEl.style.color = medRate !== null ? (medRate >= 80 ? '#fbbf24' : '#f87171') : '#4a7a9b';
+  }
+
+  function renderHistory() {
+    const el = document.getElementById('historyList');
+    if (records.length === 0) { el.innerHTML = '<div class="empty-msg">まだ記録がありません</div>'; return; }
+    el.innerHTML = [...records].reverse().map(r => `
+      <div class="history-card">
+        <div class="history-date-row">
+          <div class="history-date">${r.date}</div>
+          <button class="del-btn" onclick="deleteRecord('${r.date}')">削除</button>
+        </div>
+        <div class="history-items">
+          ${r.weight ? `<span>⚖️ <b style="color:#b07040">${r.weight} kg</b></span>` : ''}
+          ${r.amSys ? `<span>🌅 朝　<b style="color:#c04880">${r.amSys}/${r.amDia}</b> mmHg　脈 ${r.amPulse}</span>` : ''}
+          ${r.pmSys ? `<span>🌙 夜　<b style="color:#5858c8">${r.pmSys}/${r.pmDia}</b> mmHg　脈 ${r.pmPulse}</span>` : ''}
+          ${r.sleep ? `<span>😴 <b style="color:#7858b0">${r.sleep} 時間</b></span>` : ''}
+          <div class="history-flags">
+            ${r.sleepy !== null ? `<span>😪 ${r.sleepy ? '<b style="color:#c07030">昼眠気 あり</b>' : '<b style="color:#7c6858">昼眠気 なし</b>'}</span>` : ''}
+            ${r.cpap !== null ? `<span>💨 ${r.cpap ? '<b style="color:#2a8a50">CPAP ✓</b>' : '<b style="color:#c03030">CPAP ✗</b>'}</span>` : ''}
+            ${r.meds !== null ? `<span>💊 ${r.meds ? '<b style="color:#a07010">服薬 ✓</b>' : '<b style="color:#c03030">服薬 ✗</b>'}</span>` : ''}
+          </div>
+        </div>
+        ${r.memo ? `<div class="history-memo">📝 ${r.memo}</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  function renderReport() {
+    const recent = records.slice(-reportRange);
+    const avg = (arr, fn) => arr.length > 0 ? arr.reduce((s,r) => s + fn(r), 0) / arr.length : null;
+    const wArr = recent.filter(r => r.weight);
+    const amArr = recent.filter(r => r.amSys);
+    const pmArr = recent.filter(r => r.pmSys);
+    const slArr = recent.filter(r => r.sleep);
+    const avgW = avg(wArr, r => parseFloat(r.weight));
+    const avgAm = avg(amArr, r => parseInt(r.amSys));
+    const avgPm = avg(pmArr, r => parseInt(r.pmSys));
+    const avgSl = avg(slArr, r => parseFloat(r.sleep));
+    const cpapDays = recent.filter(r => r.cpap === true).length;
+    const medDays = recent.filter(r => r.meds === true).length;
+    const sleepyDays = recent.filter(r => r.sleepy === true).length;
+    const sleepyTotal = recent.filter(r => r.sleepy !== null).length;
+
+    const lines = [
+      `■ 健康記録レポート（直近${reportRange}日間）`,
+      `対象期間：${recent[0]?.date || '—'} 〜 ${recent[recent.length-1]?.date || '—'}`,
+      '',
+      '【体重】',
+      avgW !== null ? `  平均：${avgW.toFixed(2)} kg` : '  記録なし',
+      '',
+      '【血圧（朝）平均収縮期】',
+      avgAm !== null ? `  ${Math.round(avgAm)} mmHg` : '  記録なし',
+      '【血圧（夜）平均収縮期】',
+      avgPm !== null ? `  ${Math.round(avgPm)} mmHg` : '  記録なし',
+      '',
+      '【睡眠】',
+      avgSl !== null ? `  平均睡眠時間：${avgSl.toFixed(1)} 時間` : '  記録なし',
+      '',
+      '【昼間の眠気（あった日数）】',
+      sleepyTotal > 0 ? `  ${sleepyDays}/${sleepyTotal}日` : '  記録なし',
+      '',
+      `【CPAP使用率（昨晩）】`,
+      recent.length > 0 ? `  ${Math.round(cpapDays/recent.length*100)}%（${cpapDays}/${recent.length}日）` : '  記録なし',
+      '',
+      `【服薬遵守率（昨晩）】`,
+      recent.length > 0 ? `  ${Math.round(medDays/recent.length*100)}%（${medDays}/${recent.length}日）` : '  記録なし',
+      '',
+      '【体調メモ】',
+      ...recent.filter(r => r.memo).map(r => `  ${r.date}：${r.memo}`),
+    ];
+    document.getElementById('reportText').textContent = lines.join('\n');
+  }
+
+  function copyReport() {
+    const text = document.getElementById('reportText').textContent;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => alert('コピーしました！'));
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta); alert('コピーしました！');
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>
